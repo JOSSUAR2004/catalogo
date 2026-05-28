@@ -1,303 +1,515 @@
-import React, { useState, useEffect } from 'react';
-import ModalCamiseta from './components/ModalCamiseta';
-import CATALOGO_BASE from './catalogo.json'; 
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { ShoppingCart, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
+import catalogoDatos from './catalogo.json'; 
 
-function TarjetaCamiseta({ cam, setCamisetaSeleccionada }) {
-  const [fotoIndex, setFotoIndex] = useState(0);
-  const [intervaloId, setIntervaloId] = useState(null);
+// ==========================================
+// COMPONENTE 1: LA TARJETA DE VITRINA (DISEÑO OSCURO)
+// ==========================================
+const ProductoCard = ({ producto, onAbrirModal }) => {
+  const [imagenActiva, setImagenActiva] = useState(0);
 
-  const alEntrarMouse = () => {
-    if (cam.imagenes && cam.imagenes.length > 1) {
-      const id = setInterval(() => {
-        setFotoIndex((prevIndex) => (prevIndex + 1) % cam.imagenes.length);
-      }, 1200);
-      setIntervaloId(id);
-    }
-  };
-
-  const detenerCarrusel = () => {
-    if (intervaloId) {
-      clearInterval(intervaloId);
-      setIntervaloId(null);
-    }
-  };
-
-  const alSalirMouse = () => {
-    detenerCarrusel();
-    setFotoIndex(0);
-  };
-
-  const fotoSiguiente = (e) => {
+  const nextImage = (e) => {
     e.stopPropagation();
-    detenerCarrusel();
-    setFotoIndex((fotoIndex + 1) % cam.imagenes.length);
+    setImagenActiva((prev) => (prev === producto.imagenes.length - 1 ? 0 : prev + 1));
   };
 
-  const fotoAnterior = (e) => {
+  const prevImage = (e) => {
     e.stopPropagation();
-    detenerCarrusel();
-    setFotoIndex((fotoIndex - 1 + cam.imagenes.length) % cam.imagenes.length);
+    setImagenActiva((prev) => (prev === 0 ? producto.imagenes.length - 1 : prev - 1));
   };
 
   return (
     <div 
-      className="group flex flex-col bg-[#0A0A0A] transition-all duration-300 relative border border-transparent hover:border-[#222222] p-2"
-      onMouseEnter={alEntrarMouse}
-      onMouseLeave={alSalirMouse}
+      onClick={() => onAbrirModal(producto)}
+      className="bg-[#121212] border border-zinc-800 rounded-lg overflow-hidden flex flex-col h-full cursor-pointer group hover:border-zinc-700 transition-all"
     >
-      <div className="relative pt-[120%] bg-[#111111] border border-[#222222] overflow-hidden">
-        <img 
-          src={cam.imagenes[fotoIndex] || '/placeholder.png'} 
-          alt={cam.nombre} 
-          className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-300 ease-out" 
-          loading="lazy" 
-        />
+      <div className="relative h-64 w-full overflow-hidden bg-zinc-900 shrink-0 flex items-center justify-center">
+        <span className="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-widest uppercase z-10">
+          {producto.version || 'FANÁTICO'}
+        </span>
+
+        <div 
+          className="flex w-full h-full transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${imagenActiva * 100}%)` }}
+        >
+          {producto.imagenes.map((img, index) => (
+            <img 
+              key={index}
+              src={img} 
+              alt={`${producto.nombre} - ${index + 1}`} 
+              className="w-full h-full object-contain shrink-0 p-4"
+              loading={index === 0 ? "eager" : "lazy"} 
+            />
+          ))}
+        </div>
         
-        {cam.imagenes.length > 1 && (
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-            <button onClick={fotoAnterior} className="bg-[#0A0A0A]/80 text-white w-6 h-6 border border-[#333333] hover:bg-white hover:text-black font-black text-xs flex items-center justify-center">‹</button>
-            <button onClick={fotoSiguiente} className="bg-[#0A0A0A]/80 text-white w-6 h-6 border border-[#333333] hover:bg-white hover:text-black font-black text-xs flex items-center justify-center">›</button>
-          </div>
+        {producto.imagenes.length > 1 && (
+          <>
+            <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white p-1.5 rounded-full z-10 active:scale-95 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <ChevronLeft size={16} />
+            </button>
+            <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white p-1.5 rounded-full z-10 active:scale-95 md:opacity-0 group-hover:opacity-100 transition-opacity">
+              <ChevronRight size={16} />
+            </button>
+          </>
         )}
 
-        <div className="absolute top-3 left-3 bg-[#0A0A0A] text-white px-2.5 py-1 font-bold text-[9px] uppercase tracking-widest border border-[#333333]">
-          {cam.categoria.toUpperCase() === 'RETRO' ? 'RETRO' : cam.version}
-        </div>
-        
-        <div className="absolute bottom-3 right-3 bg-[#0A0A0A]/90 text-[#888888] px-2 py-1 font-mono text-[9px] uppercase tracking-widest border border-[#222222] backdrop-blur-sm">
-          {fotoIndex + 1} / {cam.imagenes.length} SHOTS
-        </div>
-
-        <div className="absolute bottom-0 inset-x-0 h-1 flex gap-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {cam.imagenes.map((_, idx) => (
-            <div key={idx} className={`h-full flex-grow transition-all duration-300 ${idx === fotoIndex ? 'bg-white' : 'bg-white/20'}`} />
-          ))}
+        <div className="absolute bottom-3 right-3 bg-black/80 text-zinc-400 text-[10px] font-mono px-2 py-0.5 rounded">
+          {imagenActiva + 1} / {producto.imagenes.length} SHOTS
         </div>
       </div>
 
-      <div className="pt-5 flex flex-col flex-grow">
-        <h3 className="text-sm font-black uppercase tracking-wider leading-snug mb-5 text-[#EEEEEE] group-hover:text-white transition-colors line-clamp-2">
-          {cam.nombre}
-        </h3>
+      <div className="p-4 flex flex-col flex-grow justify-between bg-black">
+        <div>
+          <h3 className="font-bold text-zinc-100 text-xs sm:text-sm uppercase tracking-wide line-clamp-2">{producto.nombre}</h3>
+          <p className="text-[10px] text-zinc-500 font-mono mt-1 tracking-wider">{producto.categoria || 'ACTUAL'} - VERSIÓN {producto.version || 'FANÁTICO'}</p>
+        </div>
         
-        <div className="mt-auto pt-4 border-t border-[#222222]">
-          <button 
-            type="button"
-            onClick={() => setCamisetaSeleccionada(cam)}
-            className="w-full flex justify-between items-center bg-transparent text-[#888888] hover:text-white font-bold uppercase text-[11px] tracking-widest transition-colors"
-          >
-            <span>Configurar Prenda</span>
-            <span className="text-lg leading-none">+</span>
+        <div className="mt-4 pt-3 border-t border-zinc-900 flex justify-between items-center text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
+          <span>CONFIGURAR PRENDA</span>
+          <span className="text-sm font-light">+</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// COMPONENTE 2: EL MODAL DE CONFIGURACIÓN
+// ==========================================
+const ModalCamiseta = ({ producto, onClose, onAgregar }) => {
+  const [talla, setTalla] = useState('M');
+  const [parche, setParche] = useState('Sin Parches');
+  const [cantidad, setCantidad] = useState(1); 
+  const personalizacionRef = useRef(null);
+
+  const handleAgregar = () => {
+    const textoPersonalizacion = personalizacionRef.current?.value || "S/N";
+    
+    const nuevoItem = {
+      id: `${producto.id}-${talla}-${parche}-${textoPersonalizacion.toUpperCase().replace(/\s+/g, '')}`,
+      referencia: producto.nombre,
+      version: producto.version,
+      categoria: producto.categoria,
+      talla: talla,
+      parches: parche,
+      personalizacion: textoPersonalizacion.toUpperCase(),
+      foto_url: producto.imagenes[0],
+      cantidad: Number(cantidad) 
+    };
+    
+    onAgregar(nuevoItem);
+    onClose();
+  };
+
+  if (!producto) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
+      <div className="bg-[#121212] border border-zinc-800 w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col md:flex-row overflow-hidden text-zinc-200">
+        
+        <div className="w-full md:w-1/2 bg-zinc-900 p-6 flex justify-center items-center relative border-b md:border-b-0 md:border-r border-zinc-800">
+          <button onClick={onClose} className="absolute top-4 left-4 md:hidden bg-black p-2 rounded-full text-zinc-400 border border-zinc-800">
+            <X size={18} />
+          </button>
+          <img src={producto.imagenes[0]} alt={producto.nombre} className="w-full h-56 md:h-full object-contain" />
+        </div>
+
+        <div className="w-full md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-lg font-black text-white leading-tight uppercase tracking-wider">{producto.nombre}</h2>
+                <p className="text-zinc-500 text-[10px] font-mono mt-1 tracking-widest">{producto.categoria} • {producto.version}</p>
+              </div>
+              <button onClick={onClose} className="hidden md:block text-zinc-500 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4 mt-6">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-col gap-1 col-span-2">
+                  <label className="text-[10px] font-bold text-zinc-400 tracking-widest uppercase">TALLA</label>
+                  <select value={talla} onChange={(e) => setTalla(e.target.value)} className="w-full border border-zinc-800 bg-black rounded p-2.5 text-xs text-white outline-none focus:border-zinc-500">
+                    <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="XXL">XXL</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1 col-span-1">
+                  <label className="text-[10px] font-bold text-zinc-400 tracking-widest uppercase">CANT.</label>
+                  <select value={cantidad} onChange={(e) => setCantidad(e.target.value)} className="w-full border border-zinc-800 bg-black rounded p-2.5 text-xs text-white outline-none focus:border-zinc-500 font-mono">
+                    {[...Array(10).keys()].map(n => (
+                      <option key={n + 1} value={n + 1}>{n + 1}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-zinc-400 tracking-widest uppercase">PARCHES</label>
+                <select value={parche} onChange={(e) => setParche(e.target.value)} className="w-full border border-zinc-800 bg-black rounded p-2.5 text-xs text-white outline-none focus:border-zinc-500">
+                  <option value="Sin Parches">NINGUNO</option>
+                  <option value="Copa/Liga Correspondiente">SÍ, ASIGNAR CORRESPONDIENTE</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-zinc-400 tracking-widest uppercase">NOMBRE Y NÚMERO (OPCIONAL)</label>
+                <input type="text" ref={personalizacionRef} placeholder="EJ: MBAPPÉ #9" className="w-full border border-zinc-800 bg-black rounded p-2.5 text-xs uppercase text-white outline-none focus:border-zinc-500 placeholder-zinc-700" />
+              </div>
+            </div>
+          </div>
+          <button onClick={handleAgregar} className="w-full bg-white text-black font-bold py-3 rounded-lg mt-8 hover:bg-zinc-200 active:scale-95 transition-all text-xs tracking-widest uppercase">
+            CONFIRMAR PRENDA
           </button>
         </div>
       </div>
     </div>
   );
-}
+};
 
+// ==========================================
+// COMPONENTE 3: PANEL DE DISTRIBUCIÓN
+// ==========================================
+const ContenidoDistribucion = ({ carrito, totalUnidades, pedidoMinimo, eliminarDelCarrito, procesarPedido, onCloseMobile }) => (
+  <div className="flex flex-col justify-between h-full text-white bg-zinc-950">
+    <div>
+      <div className="flex justify-between items-baseline mb-4 border-b border-zinc-900 pb-3">
+        <h2 className="font-black text-sm uppercase tracking-widest text-white">DISTRIBUCIÓN</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-zinc-500">MIN: {pedidoMinimo} UDS</span>
+          {onCloseMobile && (
+            <button onClick={onCloseMobile} className="lg:hidden text-zinc-400 hover:text-white ml-2 p-1">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-4 max-h-[55vh] lg:max-h-[40vh] overflow-y-auto pr-1">
+        {carrito.length === 0 ? (
+          <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest py-6 text-center">BANDEJA VACÍA</p>
+        ) : (
+          carrito.map((item) => (
+            <div key={item.id} className="flex justify-between items-center text-[11px] border-b border-zinc-900 pb-2">
+              <div className="flex-1 pr-2">
+                <p className="font-bold text-zinc-300 line-clamp-1 uppercase">{item.referencia}</p>
+                <p className="text-[9px] text-zinc-500 font-mono mt-0.5">
+                  TALLA: {item.talla} • {item.personalizacion} <span className="text-white font-bold ml-1">x{item.cantidad}</span>
+                </p>
+              </div>
+              <button onClick={() => eliminarDelCarrito(item.id)} className="text-zinc-600 hover:text-red-500 shrink-0">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+
+    <div className="mt-6 pt-4 border-t border-zinc-900 text-center">
+      {totalUnidades < pedidoMinimo ? (
+        <div className="mb-4 bg-zinc-900/50 p-3 rounded border border-zinc-900 text-[10px] text-zinc-400 font-mono uppercase tracking-wider leading-relaxed">
+          🔒 BLOQUEO DE SISTEMA <br />
+          <span className="text-zinc-500">Requiere {pedidoMinimo - totalUnidades} prenda(s) adicionales.</span>
+        </div>
+      ) : (
+        <div className="mb-4 bg-emerald-950/20 p-3 rounded border border-emerald-900/40 text-[10px] text-emerald-500 font-mono uppercase tracking-wider">
+          🔓 REQUISITO MÍNIMO CUMPLIDO
+        </div>
+      )}
+
+      <p className="text-[9px] text-zinc-600 text-left font-mono leading-normal uppercase tracking-wider mb-4">
+        📦 LOGÍSTICA DE IMPORTACIÓN: DESPACHO EST. 10 A 15 DÍAS HÁBILES SIN STOCK.
+      </p>
+
+      <button 
+        onClick={procesarPedido}
+        disabled={totalUnidades < pedidoMinimo}
+        className={`w-full py-3 font-bold text-[10px] tracking-widest uppercase rounded transition-all border ${
+          totalUnidades >= pedidoMinimo 
+          ? 'bg-white text-black hover:bg-zinc-200 border-white active:scale-95' 
+          : 'bg-transparent text-zinc-700 border-zinc-900 cursor-not-allowed'
+        }`}
+      >
+        TRANSMITIR ORDEN →
+      </button>
+    </div>
+  </div>
+);
+
+// ==========================================
+// COMPONENTE PRINCIPAL
+// ==========================================
 export default function App() {
-  const [busqueda, setBusqueda] = useState('');
-  const [categoriaActiva, setCategoriaActiva] = useState('TODAS');
-  const [versionActiva, setVersionActiva] = useState('TODAS');
-  const [camisetaSeleccionada, setCamisetaSeleccionada] = useState(null);
-  
-  // NUEVO ESTADO PARA EL CARRITO MÓVIL
-  const [carritoMovilAbierto, setCarritoMovilAbierto] = useState(false);
-
   const [carrito, setCarrito] = useState(() => {
-    const guardado = localStorage.getItem('ds_dark_cart');
-    return guardado ? JSON.parse(guardado) : [];
+    const respaldado = localStorage.getItem('directSource_cart');
+    return respaldado ? JSON.parse(respaldado) : [];
   });
 
-  useEffect(() => {
-    localStorage.setItem('ds_dark_cart', JSON.stringify(carrito));
+  const [modalProducto, setModalProducto] = useState(null); 
+  const [mostrarCarritoMovil, setMostrarCarritoMovil] = useState(false); 
+  
+  const pedidoMinimo = 6;
+  const [busqueda, setBusqueda] = useState('');
+  const [lineaDiseno, setLineaDiseno] = useState('TODAS'); 
+  const [versionCorte, setVersionCorte] = useState('TODAS'); 
+
+  const [paginaActual, setPaginaActual] = useState(1);
+  const productosPorPagina = 20;
+
+  const totalUnidades = useMemo(() => {
+    return carrito.reduce((acc, item) => acc + item.cantidad, 0);
   }, [carrito]);
 
   useEffect(() => {
-    if (categoriaActiva === 'RETRO') setVersionActiva('TODAS');
-  }, [categoriaActiva]);
+    localStorage.setItem('directSource_cart', JSON.stringify(carrito));
+  }, [carrito]);
 
-  const camisetasFiltradas = CATALOGO_BASE.filter((cam) => {
-    const cumpleBusqueda = cam.nombre.toLowerCase().includes(busqueda.toLowerCase());
-    const cumpleCategoria = categoriaActiva === 'TODAS' || cam.categoria.toUpperCase() === categoriaActiva;
-    const cumpleVersion = categoriaActiva === 'RETRO' || versionActiva === 'TODAS' || cam.version.toUpperCase() === versionActiva;
-    return cumpleBusqueda && cumpleCategoria && cumpleVersion;
-  });
+  // Función para resetear la búsqueda al tocar el logo o nombre de la marca
+  const handleResetBusqueda = () => {
+    setBusqueda('');
+    setPaginaActual(1);
+  };
 
-  const agregarAlCarrito = (prenda) => setCarrito([...carrito, prenda]);
-  const eliminarDelCarrito = (idx) => setCarrito(carrito.filter((_, i) => i !== idx));
-  const vaciarCarrito = () => window.confirm('¿VACIAR TODA LA BOLSA DE PEDIDO?') && setCarrito([]);
+  const handleCambiarLinea = (linea) => {
+    setLineaDiseno(linea);
+    setPaginaActual(1);
+    if (linea === 'RETRO') {
+      setVersionCorte('TODAS');
+    }
+  };
 
-  const enviarPedidoWhatsApp = () => {
-    if (carrito.length < 6) return;
-    let msg = "¡Hola Direct Source Sports!\n\n*NUEVO PEDIDO MAYORISTA*\n";
-    msg += `Total unidades: ${carrito.length}\n----------------------------------------\n\n`;
-    carrito.forEach((item, idx) => {
-      msg += `*${idx + 1}. ${item.nombre}*\n   - Línea: ${item.categoria}\n   - Corte/Versión: ${item.categoria.toUpperCase() === 'RETRO' ? 'Retro Única' : item.version}\n   - Talla: ${item.talla}\n   - Estampado: ${item.nombreEstampado || "Sin estampado"} ${item.numeroEstampado ? `(#${item.numeroEstampado})` : ""}\n\n`;
+  const productosFiltrados = useMemo(() => {
+    return catalogoDatos.filter(prod => {
+      const coincideBusqueda = prod.nombre.toLowerCase().includes(busqueda.toLowerCase());
+      const coincideLinea = lineaDiseno === 'TODAS' || prod.categoria?.toUpperCase() === lineaDiseno;
+      const coincideCorte = versionCorte === 'TODAS' || prod.version?.toUpperCase() === versionCorte;
+      return coincideBusqueda && coincideLinea && coincideCorte;
     });
-    msg += "----------------------------------------\n*Nota:* Los parches de las mangas te los detallo aquí abajo.";
-    window.open(`https://wa.me/573013465240?text=${encodeURIComponent(msg)}`, '_blank');
+  }, [busqueda, lineaDiseno, versionCorte]);
+
+  const indiceUltimoProducto = paginaActual * productosPorPagina;
+  const indicePrimerProducto = indiceUltimoProducto - productosPorPagina;
+  const productosPaginados = productosFiltrados.slice(indicePrimerProducto, indiceUltimoProducto);
+  const totalPaginas = Math.ceil(productosFiltrados.length / productosPorPagina);
+
+  const agregarAlCarrito = (nuevoItem) => {
+    setCarrito((prevCarrito) => {
+      const existeItem = prevCarrito.find(item => item.id === nuevoItem.id);
+      if (existeItem) {
+        return prevCarrito.map(item => 
+          item.id === nuevoItem.id 
+            ? { ...item, cantidad: item.cantidad + nuevoItem.cantidad }
+            : item
+        );
+      }
+      return [...prevCarrito, nuevoItem];
+    });
+  };
+
+  const eliminarDelCarrito = (id) => {
+    setCarrito(carrito.filter(item => item.id !== id));
+  };
+
+  const procesarPedido = async () => {
+    // 1. Doble validación de seguridad por si acaso
+    if (totalUnidades < pedidoMinimo) {
+      alert(`Recuerda que el pedido mínimo mayorista es de ${pedidoMinimo} unidades.`);
+      return;
+    }
+
+    const webhookUrl = 'TU_WEBHOOK_URL_AQUI'; // 🚀 Reemplaza esto por tu URL de n8n cuando la tengas
+
+    // 2. Si todavía tiene la URL de ejemplo, simulamos el flujo de éxito limpiando la UI
+    if (webhookUrl === 'TU_WEBHOOK_URL_AQUI') {
+      console.log("📦 PAYLOAD DETALLADO PARA N8N:", {
+        fecha: new Date().toISOString(),
+        total_prendas: totalUnidades,
+        items: carrito
+      });
+      
+      alert(`⚠️ ¡Botón conectado con éxito!\n\nNota técnica: El sistema procesó las ${totalUnidades} prendas correctamente.\n\nComo estás en modo prueba, el carrito se vaciará y se cerrará automáticamente para validar el flujo visual.`);
+      
+      // 🚀 Agregamos esto aquí para que en móvil no se quede la pantalla congelada
+      setCarrito([]); // Vacía la bolsa (y por el useEffect limpia el localStorage)
+      setMostrarCarritoMovil(false); // Cierra el cajón lateral flotante en celulares
+      return;
+    }
+
+    // 3. Flujo HTTP Real (Se activa automáticamente apenas pegues tu enlace de n8n arriba)
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          fecha: new Date().toISOString(),
+          total_prendas: totalUnidades,
+          items: carrito
+        })
+      });
+
+      if (response.ok) {
+        alert("¡Orden transmitida con éxito! El sistema n8n ha generado la cola para tu Excel de fábrica.");
+        setCarrito([]); // Limpia la bolsa
+        setMostrarCarritoMovil(false); // Cierra el menú en celular
+      } else {
+        alert("Fábrica respondió con un error. Por favor, intenta transmitir de nuevo.");
+      }
+    } catch (error) {
+      console.error("Error de red en n8n:", error);
+      alert("Hubo un problema de conexión con el servidor de automatización. Revisa tu consola.");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans antialiased selection:bg-white selection:text-black">
+    <div className="min-h-screen bg-black text-white font-sans antialiased selection:bg-zinc-800">
       
-      {/* NAVBAR */}
-      <header className="border-b border-[#222222] bg-[#0A0A0A] sticky top-0 z-40 px-6 md:px-10 py-5 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="relative w-12 h-12 flex items-center justify-center bg-[#111111] border border-[#333333] overflow-hidden group">
-            <img src="/watermark.png" alt="Logo" className="w-full h-full object-contain z-10" onError={(e) => { e.target.style.opacity = '0'; }} />
-            <span className="absolute text-[8px] font-mono text-[#555555] text-center leading-tight group-hover:text-white transition-colors"><br/></span>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-black text-xl tracking-tighter uppercase leading-none">Direct Source</span>
-            <span className="text-[10px] font-bold tracking-widest text-[#666666] uppercase mt-1">Wholesale Supply</span>
-          </div>
-        </div>
-
-        {/* LÓGICA INTELIGENTE DEL BOTÓN DE BOLSA */}
-        <button 
-          type="button"
-          onClick={() => {
-            if (window.innerWidth < 1024) {
-              setCarritoMovilAbierto(true);
-            } else {
-              document.getElementById('bolsa-compras').scrollIntoView({ behavior: 'smooth' });
-            }
-          }}
-          className="flex items-center gap-3 bg-[#111111] border border-[#333333] hover:bg-white hover:text-black px-6 py-2.5 transition-all duration-300"
+      {/* HEADER CON BOTÓN DE RESET INTELIGENTE */}
+      <header className="border-b border-zinc-900 bg-black p-6 flex justify-between items-center max-w-7xl mx-auto">
+        <div 
+          onClick={handleResetBusqueda} 
+          className="cursor-pointer select-none group"
         >
-          <span className="text-xs font-bold uppercase tracking-widest">Bolsa</span>
-          <span className="font-black text-sm">[{carrito.length}]</span>
+          {/* Al pasar el mouse hace un sutil efecto de color para que el user note que es interactivo */}
+          <h1 className="font-black text-xl tracking-widest text-white group-hover:text-zinc-300 transition-colors">
+            DIRECT SOURCE
+          </h1>
+          <p className="text-[9px] text-zinc-500 font-mono tracking-widest mt-0.5 group-hover:text-zinc-400 transition-colors">
+            WHOLESALE SUPPLY
+          </p>
+        </div>
+        
+        <button 
+          onClick={() => setMostrarCarritoMovil(true)}
+          className="border border-zinc-800 px-4 py-2 font-mono text-xs tracking-widest rounded bg-zinc-950 active:scale-95 transition-transform"
+        >
+          BOLSA [{totalUnidades}]
         </button>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-6 md:px-10 py-12 grid grid-cols-1 lg:grid-cols-4 gap-12">
+      {/* CUERPO CENTRAL */}
+      <main className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
         
-        <div className="lg:col-span-3 space-y-10">
-          <div className="relative border-b border-[#333333] pb-3">
-            <input type="text" placeholder="INGRESA REFERENCIA O EQUIPO..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="w-full bg-transparent py-2 text-xl font-black uppercase tracking-tight text-white focus:outline-none placeholder-[#444444]" />
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-10 pt-2 border-b border-[#111111] pb-8">
-            <div className="flex flex-col gap-4">
-              <span className="text-[10px] font-bold text-[#666666] uppercase tracking-widest">Línea de Diseño</span>
-              <div className="flex gap-3">
-                {['TODAS', 'ACTUAL', 'RETRO'].map(c => (
-                  <button type="button" key={c} onClick={() => setCategoriaActiva(c)} className={`px-5 py-2 text-[11px] font-bold uppercase tracking-widest border transition-all duration-300 ${categoriaActiva === c ? 'bg-white text-black border-white' : 'bg-[#0A0A0A] text-[#888888] border-[#333333] hover:border-white hover:text-white'}`}>{c}</button>
-                ))}
-              </div>
-            </div>
-
-            {categoriaActiva !== 'RETRO' ? (
-              <div className="flex flex-col gap-4 animate-fade-in">
-                <span className="text-[10px] font-bold text-[#666666] uppercase tracking-widest">Versión de Corte</span>
-                <div className="flex gap-3">
-                  {['TODAS', 'JUGADOR', 'FANÁTICO'].map(v => (
-                    <button type="button" key={v} onClick={() => setVersionActiva(v)} className={`px-5 py-2 text-[11px] font-bold uppercase tracking-widest border transition-all duration-300 ${versionActiva === v ? 'bg-white text-black border-white' : 'bg-[#0A0A0A] text-[#888888] border-[#333333] hover:border-white hover:text-white'}`}>{v}</button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col justify-end pb-2">
-                <span className="text-[10px] font-mono tracking-wider text-[#EB5E28] uppercase bg-[#1C1612] px-4 py-2 border border-[#402B1D]">// Edición Retro: Ajuste clásico de época único</span>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
-            {camisetasFiltradas.map((cam) => (
-              <TarjetaCamiseta key={cam.id} cam={cam} setCamisetaSeleccionada={setCamisetaSeleccionada} />
-            ))}
-          </div>
-        </div>
-
-        {/* SIDEBAR LOGÍSTICO REFACTORIZADO (OFF-CANVAS EN MÓVIL) */}
-        <div id="bolsa-compras" className={`lg:col-span-1 ${carritoMovilAbierto ? 'fixed inset-0 z-50 bg-[#0A0A0A] p-6 overflow-y-auto animate-fade-in' : 'hidden lg:block'}`}>
+        {/* COLUMNA PRINCIPAL */}
+        <div className="flex-1">
           
-          {/* Botón de cierre solo visible en móvil */}
-          {carritoMovilAbierto && (
-            <div className="flex justify-between items-center mb-6 lg:hidden">
-              <h2 className="text-xl font-black uppercase tracking-tighter text-white">Tu Bolsa</h2>
-              <button onClick={() => setCarritoMovilAbierto(false)} className="text-white text-2xl font-light w-10 h-10 bg-[#111111] border border-[#333333] flex items-center justify-center">✕</button>
-            </div>
-          )}
+          <div className="mb-8">
+            <input 
+              type="text"
+              placeholder="INGRESA REFERENCIA O EQUIPO..."
+              value={busqueda}
+              onChange={(e) => { setBusqueda(e.target.value); setPaginaActual(1); }}
+              className="w-full bg-transparent text-white font-bold text-lg md:text-xl border-b border-zinc-800 pb-3 outline-none focus:border-zinc-500 placeholder-zinc-700 uppercase tracking-wide"
+            />
+          </div>
 
-          <div className="border border-[#222222] bg-[#111111] p-7 sticky top-28">
-            <div className="flex justify-between items-end border-b border-[#333333] pb-5 mb-6">
-              <h3 className="text-lg font-black uppercase tracking-tighter text-white hidden lg:block">Distribución</h3>
-              <span className="text-[#888888] text-[10px] font-bold uppercase tracking-widest">MIN: 6 UDS</span>
-            </div>
-
-            {carrito.length === 0 ? (
-              <p className="text-[11px] font-bold text-[#555555] uppercase tracking-widest mb-10 text-center py-10 border border-dashed border-[#333333]">BANDEJA VACÍA</p>
-            ) : (
-              <div className="space-y-5 max-h-[50vh] lg:max-h-[40vh] overflow-y-auto mb-6 pr-2 custom-scrollbar">
-                {carrito.map((item, index) => (
-                  <div key={index} className="flex flex-col gap-1.5 border-b border-[#222222] pb-4">
-                    <div className="flex justify-between items-start">
-                      <p className="font-bold uppercase text-xs leading-tight pr-4 text-[#DDDDDD]">{item.nombre}</p>
-                      <button type="button" onClick={() => eliminarDelCarrito(index)} className="text-[#555555] hover:text-white font-bold text-xs transition-colors">✕</button>
-                    </div>
-                    <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest flex gap-2">
-                      <span className="text-white">T: {item.talla}</span> 
-                      <span>|</span> 
-                      <span>LÍNEA: {item.categoria.toUpperCase() === 'RETRO' ? 'RETRO' : item.version}</span>
-                    </p>
-                    {item.nombreEstampado && (
-                      <p className="text-[9px] font-bold text-[#AAAAAA] bg-[#1A1A1A] p-1.5 mt-1 inline-block uppercase border border-[#222222]">EST: {item.nombreEstampado} #{item.numeroEstampado}</p>
-                    )}
-                  </div>
+          <div className="flex flex-wrap gap-8 mb-8 text-[10px] font-bold tracking-widest">
+            <div>
+              <p className="text-zinc-500 font-mono mb-2 uppercase">LÍNEA DE DISEÑO</p>
+              <div className="flex bg-zinc-950 border border-zinc-900 p-1 rounded gap-1">
+                {['TODAS', 'ACTUAL', 'RETRO'].map(l => (
+                  <button 
+                    key={l}
+                    onClick={() => handleCambiarLinea(l)}
+                    className={`px-4 py-2 transition-all rounded ${lineaDiseno === l ? 'bg-white text-black font-black' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    {l}
+                  </button>
                 ))}
-                <button type="button" onClick={vaciarCarrito} className="text-[9px] font-bold text-[#555555] hover:text-white uppercase tracking-widest border-b border-[#555555] pb-0.5 transition-colors">Purge Batch</button>
               </div>
-            )}
+            </div>
 
-            <div className="bg-[#0A0A0A] border border-[#222222] p-5 mb-6">
-              {carrito.length < 6 ? (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-[#666666]">Bloqueo de Sistema</p>
-                  <p className="text-[11px] text-[#AAAAAA] font-medium leading-relaxed">Requiere <span className="font-black text-white">{6 - carrito.length} prenda(s)</span> adicionales.</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-[#666666]">Desbloqueado</p>
-                  <p className="text-[11px] text-[#4ADE80] font-black uppercase tracking-wider">Envío Nacional Gratuito Activo.</p>
+            <div className={lineaDiseno === 'RETRO' ? 'opacity-25 pointer-events-none transition-opacity' : 'transition-opacity'}>
+              <p className="text-zinc-500 font-mono mb-2 uppercase">
+                VERSIÓN DE CORTE {lineaDiseno === 'RETRO' && <span className="text-zinc-600 text-[9px]">(NO APLICA EN RETROS)</span>}
+              </p>
+              <div className="flex bg-zinc-950 border border-zinc-900 p-1 rounded gap-1">
+                {['TODAS', 'JUGADOR', 'FANÁTICO'].map(v => (
+                  <button 
+                    key={v}
+                    onClick={() => { setVersionCorte(v); setPaginaActual(1); }}
+                    disabled={lineaDiseno === 'RETRO'}
+                    className={`px-4 py-2 transition-all rounded ${versionCorte === v ? 'bg-white text-black font-black' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {productosPaginados.length === 0 ? (
+            <p className="text-zinc-600 font-mono text-xs uppercase tracking-widest my-12">No hay referencias en este cuadrante.</p>
+          ) : (
+            <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {productosPaginados.map((producto) => (
+                  <ProductoCard key={producto.id} producto={producto} onAbrirModal={setModalProducto} />
+                ))}
+              </div>
+
+              {/* PAGINACIÓN */}
+              {totalPaginas > 1 && (
+                <div className="mt-12 flex justify-center items-center gap-6 border-t border-zinc-900 pt-6 text-xs font-mono">
+                  <button 
+                    onClick={() => { setPaginaActual(prev => Math.max(prev - 1, 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={paginaActual === 1}
+                    className="px-4 py-2 bg-zinc-950 border border-zinc-800 text-zinc-400 disabled:opacity-30 tracking-widest hover:text-white rounded"
+                  >
+                    PREV
+                  </button>
+                  <span className="text-zinc-500 tracking-widest uppercase text-[11px]">
+                    PÁGINA {paginaActual} DE {totalPaginas}
+                  </span>
+                  <button 
+                    onClick={() => { setPaginaActual(prev => Math.min(prev + 1, totalPaginas)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={paginaActual === totalPaginas}
+                    className="px-4 py-2 bg-zinc-950 border border-zinc-800 text-zinc-400 disabled:opacity-30 tracking-widest hover:text-white rounded"
+                  >
+                    NEXT
+                  </button>
                 </div>
               )}
-              <div className="mt-4 pt-4 border-t border-[#222222]">
-                <p className="text-[10px] text-[#666666] font-bold uppercase tracking-widest leading-relaxed">
-                  🚚 LOGÍSTICA DE IMPORTACIÓN:<br/>
-                  <span className="text-[#AAAAAA]">Despacho est. 10 a 15 días hábiles sin stock.</span>
-                </p>
-              </div>
             </div>
-
-            <button
-              type="button"
-              onClick={enviarPedidoWhatsApp}
-              disabled={carrito.length < 6}
-              className={`w-full py-4 flex justify-between items-center px-6 transition-all duration-300 ${
-                carrito.length >= 6 ? 'bg-white text-black hover:bg-[#DDDDDD]' : 'bg-[#1A1A1A] text-[#444444] border border-[#222222] cursor-not-allowed'
-              }`}
-            >
-              <span className="text-[11px] font-black uppercase tracking-widest">Transmitir Orden</span>
-              <span className="text-lg leading-none">→</span>
-            </button>
-          </div>
+          )}
         </div>
 
+        {/* VISTA ESCRITORIO */}
+        <div className="hidden lg:block w-64 shrink-0 border border-zinc-900 bg-zinc-950 p-5 rounded-lg h-[fit-content] sticky top-28">
+          <ContenidoDistribucion 
+            carrito={carrito}
+            totalUnidades={totalUnidades}
+            pedidoMinimo={pedidoMinimo}
+            eliminarDelCarrito={eliminarDelCarrito}
+            procesarPedido={procesarPedido}
+          />
+        </div>
       </main>
 
-      {camisetaSeleccionada && (
-        <ModalCamiseta
-          camiseta={camisetaSeleccionada}
-          onClose={() => setCamisetaSeleccionada(null)}
-          onAgregar={(item) => {
-            agregarAlCarrito(item);
-            // Opcional: abre el carrito móvil automáticamente al agregar algo
-            if (window.innerWidth < 1024) setCarritoMovilAbierto(true);
-          }}
+      {/* VISTA MÓVIL */}
+      {mostrarCarritoMovil && (
+        <div className="fixed inset-0 bg-black/80 z-50 lg:hidden flex justify-end backdrop-blur-sm">
+          <div className="bg-zinc-950 w-full max-w-sm h-full p-6 border-l border-zinc-900 flex flex-col justify-between shadow-2xl">
+            <ContenidoDistribucion 
+              carrito={carrito}
+              totalUnidades={totalUnidades}
+              pedidoMinimo={pedidoMinimo}
+              eliminarDelCarrito={eliminarDelCarrito}
+              procesarPedido={procesarPedido}
+              onCloseMobile={() => setMostrarCarritoMovil(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {modalProducto && (
+        <ModalCamiseta 
+          producto={modalProducto} 
+          onClose={() => setModalProducto(null)} 
+          onAgregar={agregarAlCarrito} 
         />
       )}
     </div>
