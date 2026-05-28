@@ -174,3 +174,11 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
+    
+cloudinary.config(
+  cloud_name = "de9bzrrev",  # Reemplaza con tu Cloud Name
+  api_key = "664982167684186",        # Reemplaza con tu API Key
+  api_secret = "zefxBw5aEtgm7saRDaDXNBOZytk",  # Reemplaza con tu API Secret
+  secure = True
+)
